@@ -416,6 +416,26 @@ ${gatewayIp} growtopia2.com</pre>
 </html>`);
 });
 
+/**
+ * @note JoTavern v0.2.3: /hosts.txt - PLAIN TEXT MURNI (bukan HTML), khusus
+ * buat dipasang sebagai URL host file di PowerTunnel (plugin Hosts). Format
+ * "IP domain" standar, gak ada tag HTML sama sekali - beda dari /host yang
+ * HTML buat dibaca manusia.
+ */
+app.get('/hosts.txt', (_req: Request, res: Response) => {
+  const gatewayIp = process.env.GATEWAY_IP || '';
+  res.setHeader('Content-Type', 'text/plain');
+  if (!gatewayIp) {
+    res.send('# GATEWAY_IP belum di-set di environment variables Vercel');
+    return;
+  }
+  res.send(`${gatewayIp} www.growtopia1.com
+${gatewayIp} www.growtopia2.com
+${gatewayIp} growtopia1.com
+${gatewayIp} growtopia2.com
+`);
+});
+
 app.listen(PORT, () => {
   console.log(`[SERVER] Running on http://localhost:${PORT}`);
 });

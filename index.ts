@@ -193,7 +193,65 @@ app.all(
     try {
       const formData = req.body as Record<string, string>;
       const email = formData.email;
+
+      // @note JoTavern v0.2.3: dulu ini stub kosong (cuma `return;` tanpa
+      // kirim response apapun) - itu yang bikin tombol "Registering..."
+      // ngambang selamanya, gak pernah dapet balesan dari server. Sekarang
+      // beneran insert ke tabel peer tenant yang dipilih.
       if (email) {
+        const _token = formData._token;
+        const growId = formData.growId;
+        const password = formData.password;
+        const passwordConfirmation = formData.password_confirmation;
+        const serverName = formData.server;
+
+        if (!growId || !password || !passwordConfirmation) {
+          renderError('Semua field wajib diisi.');
+          return;
+        }
+        if (password !== passwordConfirmation) {
+          renderError('Password dan konfirmasi password tidak cocok.', btoa(`${growId}`));
+          return;
+        }
+        if (password.length > 18 || growId.length > 18) {
+          renderError('GrowID dan password maksimal 18 karakter.', btoa(`${growId}`));
+          return;
+        }
+        if (!serverName) {
+          renderError('Server belum diisi.', btoa(`${growId}`));
+          return;
+        }
+
+        const tenant = await lookupTenant(serverName);
+        if (!tenant) {
+          renderError('Server yang dipilih tidak ditemukan.', btoa(`${growId}`));
+          return;
+        }
+
+        const tenantDb = getTenantDb(tenant.db_name);
+        const existing = await tenantDb`SELECT 1 FROM peer WHERE growid = ${growId} LIMIT 1`;
+        if (existing.length > 0) {
+          renderError('GrowID ini sudah dipakai, coba nama lain.', btoa(`${growId}`));
+          return;
+        }
+
+        await tenantDb`INSERT INTO peer (growid, password) VALUES (${growId}, ${password})`;
+
+        // @note langsung kasih token sukses juga, biar client lanjut masuk
+        // game tanpa perlu login ulang manual abis register
+        const token = Buffer.from(
+          `_token=${_token}&growId=${growId}&password=${password}&server=${serverName}&reg=1`,
+        ).toString('base64');
+
+        res.send(
+          JSON.stringify({
+            status: 'success',
+            message: 'Account Registered.',
+            token,
+            url: '',
+            accountType: 'growtopia',
+          }),
+        );
         return;
       }
 
